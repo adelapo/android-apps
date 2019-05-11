@@ -1,57 +1,16 @@
 package com.example.pi314.tictactoe;
 
-import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.view.View;
+import java.util.ArrayList;
 
-public class TicTacToeBoard extends View {
+public class TicTacToeBoard {
     enum Mark {
         X, O
     }
 
     public Mark[] board;
 
-    Paint redPaint, bluePaint, blackPaint;
-
-    public TicTacToeBoard(Context context) {
-        super(context);
+    public TicTacToeBoard() {
         board = new Mark[]{null, null, null, null, null, null, null, null, null};
-
-        redPaint = new Paint();
-        redPaint.setColor(Color.RED);
-        redPaint.setStrokeWidth(10);
-
-        bluePaint = new Paint();
-        bluePaint.setColor(Color.BLUE);
-        bluePaint.setStrokeWidth(10);
-
-        blackPaint = new Paint();
-        blackPaint.setColor(Color.BLACK);
-        blackPaint.setStrokeWidth(10);
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-
-        int width = getWidth();
-        int height = getHeight();
-
-        // Draw the board
-        canvas.drawLine((float) width / 3, (float) 0.2 * height,
-                (float) width / 3, (float) 0.8 * height, blackPaint);
-
-        canvas.drawLine((float) 2 * width / 3, (float) 0.2 * height,
-                (float) 2 * width / 3, (float) 0.8 * height, blackPaint);
-
-        canvas.drawLine((float) 0.1 * width, (float) height / 3,
-                (float) 0.9 * width, (float) height / 3, blackPaint);
-
-        canvas.drawLine((float) 0.1 * width, (float) 2 * height / 3,
-                (float) 0.9 * width, (float) 2 * height / 3, blackPaint);
-
     }
 
     Mark getWinner() {
@@ -134,5 +93,19 @@ public class TicTacToeBoard extends View {
         }
 
         return stringBuilder.toString();
+    }
+
+    ArrayList<String> boardAsStringArray() {
+        ArrayList<String> stringArray = new ArrayList<>();
+        for (Mark mark : board) {
+            if (mark == Mark.X) {
+                stringArray.add("X");
+            } else if (mark == Mark.O) {
+                stringArray.add("O");
+            } else {
+                stringArray.add("");
+            }
+        }
+        return stringArray;
     }
 }
