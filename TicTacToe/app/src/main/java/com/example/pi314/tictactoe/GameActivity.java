@@ -1,7 +1,10 @@
 package com.example.pi314.tictactoe;
 
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -56,7 +59,6 @@ public class GameActivity extends AppCompatActivity {
             statusText.setText("No one has joined.");
         } else {
             userMark = "O";
-            turnTracker.toggle();
 
             statusText.setText("Opponent's turn.");
         }
@@ -77,20 +79,87 @@ public class GameActivity extends AppCompatActivity {
                 findViewById(R.id.button_21),
                 findViewById(R.id.button_22)};
 
-        boardRef.addValueEventListener(new ValueEventListener() {
+        class CustomValueEventListener implements ValueEventListener {
+            int index;
+
+            CustomValueEventListener(int index) {
+                this.index = index;
+            }
+
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (!isUserTurn()) {
-                    int row, col;
-                    for (int i = 0; i < 9; i++) {
-                        row = i / 3;
-                        col = i % 3;
+                if (dataSnapshot.getValue() == null) {
+                    // This happens when the user leaves a game
+                    return;
+                }
 
-                        String mark = (String) dataSnapshot.child(Integer.toString(i)).getValue();
-                        buttons[i].setText(mark);
-                        board.setMark(row, col, mark);
-                    }
+                String mark = dataSnapshot.getValue(String.class);
+                System.out.println("Board position " + index + " changed to " + mark + ".");
+
+                if (mark == null || mark.equals("")) {
+                    return;
+                }
+
+                if (!userMark.equals(mark)) {
+                    buttons[index].setText(mark);
+                    board.setMark(index / 3, index % 3, mark);
                     turnTracker.toggle();
+                    statusText.setText("Your turn.");
+                } else {
+                    System.out.println("Was own player, so ignoring it...");
+                }
+
+                System.out.println(board);
+                System.out.println("Is there a winner? " + board.getWinner());
+
+                TicTacToeBoard.Mark winnerMark = board.getWinner();
+
+                if (winnerMark != null) {
+                    String winner;
+
+                    if (winnerMark == TicTacToeBoard.Mark.X) {
+                        winner = "X";
+                    } else {
+                        winner = "O";
+                    }
+
+                    final boolean userWon = userMark.equals(winner);
+                    String endMessage;
+                    if (userWon) {
+                        endMessage = "You win!";
+                    } else {
+                        endMessage = "You lost.";
+                    }
+
+                    DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+//                            switch (which) {
+//                                case DialogInterface.BUTTON_POSITIVE:
+//                                    // YES button clicked
+//                                    board = new TicTacToeBoard();
+//                                    for (Button button : buttons) {
+//                                        button.setText("");
+//                                    }
+//                                    break;
+//
+//                                case DialogInterface.BUTTON_NEGATIVE:
+//                                    // NO button clicked
+//                                    playersRef.setValue(1);
+//                                    Intent intent = new Intent(context, MainActivity.class);
+//                                    startActivity(intent);
+//                                    break;
+//                            }
+                            gameRef.removeValue();
+                            Intent intent = new Intent(context, MainActivity.class);
+                            startActivity(intent);
+                        }
+                    };
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    builder.setMessage(endMessage)
+                           .setNeutralButton("OK", dialogClickListener)
+                           .show();
                 }
             }
 
@@ -98,16 +167,30 @@ public class GameActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError databaseError) {
 
             }
-        });
+        }
+
+        for (int i = 0; i < 9; i++) {
+            boardRef.child(Integer.toString(i)).addValueEventListener(new CustomValueEventListener(i));
+        }
 
         playersRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (dataSnapshot.getValue() == null) {
+                    // This happens when the user leaves a game
+                    return;
+                }
+
                 if (dataSnapshot.getValue(int.class) == 2 && isHost) {
                     Toast toast = Toast.makeText(context, "A player joined your game.", Toast.LENGTH_LONG);
                     toast.show();
 
                     statusText.setText("Your turn.");
+                } else if (dataSnapshot.getValue(int.class) == 1 && !isHost) {
+                    isHost = true;
+                    Toast toast = Toast.makeText(context, "You're the host of this game.", Toast.LENGTH_LONG);
+
+                    statusText.setText("No one has joined.");
                 }
 
             }
@@ -122,12 +205,12 @@ public class GameActivity extends AppCompatActivity {
             int row;
             int col;
 
-            public CustomOnClickListener(int row, int col) {
+            CustomOnClickListener(int row, int col) {
                 this.row = row;
                 this.col = col;
             }
 
-            public CustomOnClickListener(int index) {
+            CustomOnClickListener(int index) {
                 row = index / 3;
                 col = index % 3;
             }
@@ -135,6 +218,11 @@ public class GameActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if (isUserTurn()) {
+                    if (board.getMark(row, col) != null) {
+                        // Someone already moved there
+                        return;
+                    }
+
                     board.setMark(row, col, userMark);
                     int index = row * 3 + col;
 
@@ -142,6 +230,7 @@ public class GameActivity extends AppCompatActivity {
                     buttons[index].setText(userMark);
 
                     turnTracker.toggle();
+                    statusText.setText("Opponent's turn.");
 
                 } else {
                     Toast toast = Toast.makeText(context, "It's not your turn.", Toast.LENGTH_SHORT);
